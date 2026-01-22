@@ -738,6 +738,9 @@ class HaTdbuDialog extends LitElement {
     const bottomState = getEntityState(this.hass, this.config.bottom_entity);
     const topPos = getPosition(topState);
     const bottomPos = getPosition(bottomState);
+    const headerState = topState || bottomState;
+    const stateText = this._formatState(topState, bottomState);
+    const lastChanged = this._getLatestChanged(topState, bottomState);
 
     const name =
       this.config.name ||
