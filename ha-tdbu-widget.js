@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.4.1";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -571,8 +571,8 @@ class HaTdbuWidget extends LitElement {
       <ha-card class=${cardClass} style=${cardStyle}>
         <ha-tile-container
           .interactive=${this.config.tap_action !== "none"}
-          .actionHandlerOptions=${{ hasHold: false, hasDoubleClick: false }}
-          @action=${this._handleAction}
+          .actionHandlerOptions=${{ hasHold: false, hasDoubleClick: false, hasTap: true }}
+          @action=${(ev) => this._handleAction(ev)}
         >
           <ha-tile-icon slot="icon" .interactive=${false}>
             <ha-state-icon
@@ -594,8 +594,8 @@ class HaTdbuWidget extends LitElement {
             .minGap=${this.config.min_gap}
             size="compact"
             orientation="horizontal"
-            @pointerdown=${this._stopTap}
-            @click=${this._stopTap}
+            @pointerdown=${(ev) => this._stopTap(ev)}
+            @click=${(ev) => this._stopTap(ev)}
           ></ha-tdbu-track>
         </ha-tile-container>
       </ha-card>
@@ -736,6 +736,11 @@ class HaTdbuDialog extends LitElement {
         margin-bottom: var(--ha-space-6);
       }
 
+      ha-attributes {
+        display: block;
+        width: 100%;
+      }
+
       .main-control {
         display: flex;
         flex-direction: row;
@@ -829,6 +834,15 @@ class HaTdbuDialog extends LitElement {
                 `
               : html``}
           </div>
+          ${headerState
+            ? html`
+                <ha-attributes
+                  .hass=${this.hass}
+                  .stateObj=${headerState}
+                  extra-filters="current_position,current_tilt_position"
+                ></ha-attributes>
+              `
+            : html``}
         </div>
       </ha-dialog>
     `;
