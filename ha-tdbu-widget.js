@@ -71,8 +71,8 @@ class HaTdbuTrack extends LitElement {
         display: block;
         width: 100%;
         --control-slider-color: var(
-          --state-cover-active-color,
-          var(--primary-color)
+          --tile-color,
+          var(--state-cover-active-color, var(--primary-color))
         );
         --control-slider-background: var(--control-slider-color);
         --control-slider-background-opacity: 0.2;
@@ -290,9 +290,8 @@ class HaTdbuTrack extends LitElement {
   }
 
   _isDisabled(topState, bottomState) {
-    const topUnavailable = !topState || topState.state === "unavailable" || topState.state === "unknown";
-    const bottomUnavailable =
-      !bottomState || bottomState.state === "unavailable" || bottomState.state === "unknown";
+    const topUnavailable = !topState || topState.state === "unavailable";
+    const bottomUnavailable = !bottomState || bottomState.state === "unavailable";
     return topUnavailable || bottomUnavailable;
   }
 
@@ -660,9 +659,8 @@ class HaTdbuWidget extends LitElement {
   }
 
   _isDisabled(topState, bottomState) {
-    const topUnavailable = !topState || topState.state === "unavailable" || topState.state === "unknown";
-    const bottomUnavailable =
-      !bottomState || bottomState.state === "unavailable" || bottomState.state === "unknown";
+    const topUnavailable = !topState || topState.state === "unavailable";
+    const bottomUnavailable = !bottomState || bottomState.state === "unavailable";
     return topUnavailable || bottomUnavailable;
   }
 }
@@ -810,9 +808,8 @@ class HaTdbuDialog extends LitElement {
   }
 
   _isDisabled(topState, bottomState) {
-    const topUnavailable = !topState || topState.state === "unavailable" || topState.state === "unknown";
-    const bottomUnavailable =
-      !bottomState || bottomState.state === "unavailable" || bottomState.state === "unknown";
+    const topUnavailable = !topState || topState.state === "unavailable";
+    const bottomUnavailable = !bottomState || bottomState.state === "unavailable";
     return topUnavailable || bottomUnavailable;
   }
 
