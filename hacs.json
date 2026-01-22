@@ -1,0 +1,6 @@
+{
+  "name": "Home Assistant TDBU Widget",
+  "filename": "ha-tdbu-widget.js",
+  "content_in_root": true,
+  "render_readme": true
+}
