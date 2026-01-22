@@ -582,8 +582,8 @@ class HaTdbuWidget extends LitElement {
             ></ha-state-icon>
           </ha-tile-icon>
           <ha-tile-info slot="info">
-            <span slot="primary">${name}</span>
-            ${secondaryText ? html`<span slot="secondary">${secondaryText}</span>` : html``}
+            <span slot="primary" class="primary">${name}</span>
+            ${secondaryText ? html`<span slot="secondary" class="secondary">${secondaryText}</span>` : html``}
           </ha-tile-info>
           <ha-tdbu-track
             slot="features"
