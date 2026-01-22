@@ -267,9 +267,6 @@ class HaTdbuTrack extends LitElement {
   _getRenderPosition(which, topState, bottomState) {
     const topPos = getPosition(topState);
     const bottomPos = getPosition(bottomState);
-    const headerState = topState || bottomState;
-    const stateText = this._formatState(topState, bottomState);
-    const lastChanged = this._getLatestChanged(topState, bottomState);
 
     if (which === "top") {
       if (typeof this._draftTop === "number") return this._draftTop;
