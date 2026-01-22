@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.3.0";
+const CARD_VERSION = "0.4.0";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -71,12 +71,15 @@ class HaTdbuTrack extends LitElement {
         display: block;
         width: 100%;
         --control-slider-color: var(
-          --tile-color,
+          --feature-color,
           var(--state-cover-active-color, var(--primary-color))
         );
         --control-slider-background: var(--control-slider-color);
         --control-slider-background-opacity: 0.2;
-        --control-slider-border-radius: var(--ha-border-radius-lg);
+        --control-slider-border-radius: var(
+          --feature-border-radius,
+          var(--ha-border-radius-lg)
+        );
         --control-slider-thickness: var(--feature-height, 42px);
         --handle-size: 4px;
         --handle-margin: calc(var(--control-slider-thickness) / 8);
@@ -469,18 +472,12 @@ class HaTdbuWidget extends LitElement {
 
       ha-card {
         height: 100%;
-        cursor: pointer;
         transition:
           box-shadow 180ms ease-in-out,
           border-color 180ms ease-in-out;
       }
 
-      ha-card.active {
-        --tile-color: var(--state-icon-color);
-      }
-
       ha-card.disabled {
-        cursor: default;
         opacity: 0.6;
       }
 
@@ -490,6 +487,12 @@ class HaTdbuWidget extends LitElement {
 
       ha-state-icon {
         --mdc-icon-size: 24px;
+      }
+
+      ha-tdbu-track {
+        --feature-height: 42px;
+        --feature-border-radius: var(--ha-border-radius-lg);
+        --feature-color: var(--tile-color);
       }
     `;
   }
@@ -501,6 +504,10 @@ class HaTdbuWidget extends LitElement {
       bottom_entity: "cover.bottom_rail",
       name: "TDBU blind",
     };
+  }
+
+  static async getConfigElement() {
+    return document.createElement("ha-tdbu-widget-editor");
   }
 
   setConfig(config) {
@@ -556,11 +563,17 @@ class HaTdbuWidget extends LitElement {
 
     const disabled = this._isDisabled(topState, bottomState);
     const active = this._isActive(topState, bottomState);
-    const cardClass = [active ? "active" : "", disabled ? "disabled" : ""].filter(Boolean).join(" ");
+    const tileColor = this._getTileColor(topState, bottomState, active, disabled);
+    const cardClass = disabled ? "disabled" : "";
+    const cardStyle = tileColor ? `--tile-color: ${tileColor};` : "";
 
     return html`
-      <ha-card class=${cardClass} @click=${this._handleCardTap}>
-        <ha-tile-container .interactive=${this.config.tap_action !== "none"}>
+      <ha-card class=${cardClass} style=${cardStyle}>
+        <ha-tile-container
+          .interactive=${this.config.tap_action !== "none"}
+          .actionHandlerOptions=${{ hasHold: false, hasDoubleClick: false }}
+          @action=${this._handleAction}
+        >
           <ha-tile-icon slot="icon" .interactive=${false}>
             <ha-state-icon
               slot="icon"
@@ -587,6 +600,11 @@ class HaTdbuWidget extends LitElement {
         </ha-tile-container>
       </ha-card>
     `;
+  }
+
+  _handleAction(ev) {
+    if (ev?.detail?.action !== "tap") return;
+    this._handleCardTap();
   }
 
   _stopTap(ev) {
@@ -652,10 +670,19 @@ class HaTdbuWidget extends LitElement {
     if (typeof topPos === "number" && typeof bottomPos === "number") {
       return !(topPos === 0 && bottomPos === 0);
     }
-    return (
-      (topState && topState.state && topState.state !== "closed") ||
-      (bottomState && bottomState.state && bottomState.state !== "closed")
-    );
+    return this._stateActiveCover(topState) || this._stateActiveCover(bottomState);
+  }
+
+  _stateActiveCover(stateObj) {
+    if (!stateObj) return false;
+    if (stateObj.state === "unavailable" || stateObj.state === "unknown") return false;
+    return stateObj.state !== "closed";
+  }
+
+  _getTileColor(topState, bottomState, active, disabled) {
+    if (disabled) return "var(--state-unavailable-color)";
+    if (active) return "var(--state-cover-active-color, var(--state-icon-color))";
+    return "var(--state-inactive-color)";
   }
 
   _isDisabled(topState, bottomState) {
@@ -690,8 +717,7 @@ class HaTdbuDialog extends LitElement {
       .content {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: var(--ha-space-6);
+        align-items: stretch;
         width: 100%;
       }
 
@@ -702,8 +728,22 @@ class HaTdbuDialog extends LitElement {
         width: 100%;
       }
 
+      .controls:not(:last-child) {
+        margin-bottom: var(--ha-space-6);
+      }
+
       .controls > *:not(:last-child) {
         margin-bottom: var(--ha-space-6);
+      }
+
+      .main-control {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .main-control > * {
+        margin: 0 var(--ha-space-2);
       }
 
       .positions {
@@ -769,15 +809,17 @@ class HaTdbuDialog extends LitElement {
               `
             : html``}
           <div class="controls">
-            <ha-tdbu-track
-              .hass=${this.hass}
-              top-entity=${this.config.top_entity}
-              bottom-entity=${this.config.bottom_entity}
-              .step=${this.config.step}
-              .minGap=${this.config.min_gap}
-              size="large"
-              orientation="vertical"
-            ></ha-tdbu-track>
+            <div class="main-control">
+              <ha-tdbu-track
+                .hass=${this.hass}
+                top-entity=${this.config.top_entity}
+                bottom-entity=${this.config.bottom_entity}
+                .step=${this.config.step}
+                .minGap=${this.config.min_gap}
+                size="large"
+                orientation="vertical"
+              ></ha-tdbu-track>
+            </div>
             ${this.config.show_positions_dialog
               ? html`
                   <div class="positions">
@@ -825,9 +867,164 @@ class HaTdbuDialog extends LitElement {
   }
 }
 
+class HaTdbuWidgetEditor extends LitElement {
+  static get properties() {
+    return {
+      hass: {},
+      _config: { state: true },
+    };
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+  }
+
+  render() {
+    if (!this.hass || !this._config) return html``;
+
+    const tapAction = this._config.tap_action || "details";
+
+    return html`
+      <div class="form">
+        <ha-entity-picker
+          .hass=${this.hass}
+          .label=${"Top cover entity"}
+          .value=${this._config.top_entity || ""}
+          .domainFilter=${["cover"]}
+          data-field="top_entity"
+          @value-changed=${this._valueChanged}
+        ></ha-entity-picker>
+        <ha-entity-picker
+          .hass=${this.hass}
+          .label=${"Bottom cover entity"}
+          .value=${this._config.bottom_entity || ""}
+          .domainFilter=${["cover"]}
+          data-field="bottom_entity"
+          @value-changed=${this._valueChanged}
+        ></ha-entity-picker>
+        <ha-textfield
+          .label=${"Name"}
+          .value=${this._config.name || ""}
+          data-field="name"
+          @input=${this._valueChanged}
+        ></ha-textfield>
+        <div class="row">
+          <ha-textfield
+            type="number"
+            .label=${"Step"}
+            .value=${this._config.step ?? ""}
+            inputmode="numeric"
+            min="1"
+            data-field="step"
+            @change=${this._valueChanged}
+          ></ha-textfield>
+          <ha-textfield
+            type="number"
+            .label=${"Minimum gap"}
+            .value=${this._config.min_gap ?? ""}
+            inputmode="numeric"
+            min="0"
+            data-field="min_gap"
+            @change=${this._valueChanged}
+          ></ha-textfield>
+        </div>
+        <ha-formfield .label=${"Show positions on card"}>
+          <ha-switch
+            .checked=${Boolean(this._config.show_positions)}
+            data-field="show_positions"
+            @change=${this._valueChanged}
+          ></ha-switch>
+        </ha-formfield>
+        <ha-formfield .label=${"Show positions in dialog"}>
+          <ha-switch
+            .checked=${this._config.show_positions_dialog !== false}
+            data-field="show_positions_dialog"
+            @change=${this._valueChanged}
+          ></ha-switch>
+        </ha-formfield>
+        <ha-select
+          .label=${"Tap action"}
+          .value=${tapAction}
+          @selected=${this._valueChanged}
+          data-field="tap_action"
+        >
+          <ha-list-item .value=${"details"}>Open TDBU dialog</ha-list-item>
+          <ha-list-item .value=${"more-info"}>Open more-info</ha-list-item>
+          <ha-list-item .value=${"none"}>None</ha-list-item>
+        </ha-select>
+        <ha-entity-picker
+          .hass=${this.hass}
+          .label=${"More-info entity (optional)"}
+          .value=${this._config.tap_entity || ""}
+          .domainFilter=${["cover"]}
+          data-field="tap_entity"
+          @value-changed=${this._valueChanged}
+        ></ha-entity-picker>
+      </div>
+    `;
+  }
+
+  _valueChanged(ev) {
+    ev.stopPropagation();
+    if (!this._config) return;
+
+    const target = ev.target;
+    const field = target?.dataset?.field;
+    if (!field) return;
+
+    let value;
+    if (ev.detail && Object.prototype.hasOwnProperty.call(ev.detail, "value")) {
+      value = ev.detail.value;
+    } else if (typeof target.checked === "boolean") {
+      value = target.checked;
+    } else {
+      value = target.value;
+    }
+
+    if (target.type === "number") {
+      value = value === "" ? undefined : Number(value);
+      if (!Number.isFinite(value)) value = undefined;
+    }
+
+    const config = { ...this._config, [field]: value };
+    if (value === "" || value === undefined || value === null) {
+      delete config[field];
+    }
+
+    this._config = config;
+    fireEvent(this, "config-changed", { config });
+  }
+
+  static get styles() {
+    return css`
+      .form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ha-space-3);
+      }
+
+      .row {
+        display: flex;
+        gap: var(--ha-space-3);
+      }
+
+      .row > * {
+        flex: 1;
+      }
+
+      ha-select,
+      ha-textfield,
+      ha-entity-picker {
+        display: block;
+      }
+    `;
+  }
+}
+
   customElements.define("ha-tdbu-track", HaTdbuTrack);
   customElements.define(CARD_TAG, HaTdbuWidget);
   customElements.define("ha-tdbu-dialog", HaTdbuDialog);
+  customElements.define("ha-tdbu-widget-editor", HaTdbuWidgetEditor);
 
   window.customCards = window.customCards || [];
   window.customCards.push({

@@ -7,6 +7,7 @@ A custom Lovelace card that controls top-down bottom-up blinds using two cover e
 - Compact preview for dashboards with tap-to-open detail view.
 - Drag, click-to-set, and keyboard control (arrow keys, shift for 5x step).
 - Works with standard `cover.set_cover_position` service calls.
+- Includes a visual UI editor in Lovelace (no YAML required).
 
 ## Installation
 
@@ -30,6 +31,7 @@ A custom Lovelace card that controls top-down bottom-up blinds using two cover e
    ```
 
 ## Configuration
+You can configure the card in the UI editor or via YAML.
 
 ```yaml
 type: custom:ha-tdbu-widget
