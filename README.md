@@ -22,6 +22,12 @@ A custom Lovelace card that controls top-down bottom-up blinds using two cover e
 2. Add the resource:
    - URL: `/local/ha-tdbu-widget.js`
    - Type: `JavaScript Module`
+3. Alternative: auto-load for all dashboards by adding to `configuration.yaml`:
+   ```yaml
+   frontend:
+     extra_module_url:
+       - /local/ha-tdbu-widget.js
+   ```
 
 ## Configuration
 

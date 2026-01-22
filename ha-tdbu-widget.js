@@ -1,11 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const LitElement =
-  window.LitElement || Object.getPrototypeOf(customElements.get("ha-panel-lovelace"));
-const html = window.html || LitElement.prototype.html;
-const css = window.css || LitElement.prototype.css;
-
-const CARD_VERSION = "0.2.0";
+const CARD_VERSION = "0.2.1";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -43,6 +38,16 @@ const getPosition = (stateObj) => {
 };
 
 const formatPct = (value) => (typeof value === "number" ? `${Math.round(value)}%` : "--");
+
+const init = () => {
+  if (customElements.get(CARD_TAG)) return;
+
+  const LitElement =
+    window.LitElement || Object.getPrototypeOf(customElements.get("ha-panel-lovelace"));
+  if (!LitElement) return;
+
+  const html = window.html || LitElement.prototype.html;
+  const css = window.css || LitElement.prototype.css;
 
 class HaTdbuTrack extends LitElement {
   static get properties() {
@@ -713,15 +718,22 @@ class HaTdbuDialog extends LitElement {
   }
 }
 
-customElements.define("ha-tdbu-track", HaTdbuTrack);
-customElements.define(CARD_TAG, HaTdbuWidget);
-customElements.define("ha-tdbu-dialog", HaTdbuDialog);
+  customElements.define("ha-tdbu-track", HaTdbuTrack);
+  customElements.define(CARD_TAG, HaTdbuWidget);
+  customElements.define("ha-tdbu-dialog", HaTdbuDialog);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: CARD_TAG,
-  name: "Top down bottom up cover",
-  description: "Dual cover slider for top-down bottom-up blinds.",
-});
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: CARD_TAG,
+    name: "Top down bottom up cover",
+    description: "Dual cover slider for top-down bottom-up blinds.",
+  });
 
-console.info(`Home Assistant TDBU Widget v${CARD_VERSION}`);
+  console.info(`Home Assistant TDBU Widget v${CARD_VERSION}`);
+};
+
+if (window.LitElement || customElements.get("ha-panel-lovelace")) {
+  init();
+} else {
+  customElements.whenDefined("ha-panel-lovelace").then(init);
+}
