@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.2.1";
+const CARD_VERSION = "0.3.0";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -58,6 +58,7 @@ class HaTdbuTrack extends LitElement {
       step: {},
       minGap: { attribute: "min-gap" },
       size: { reflect: true },
+      orientation: { reflect: true },
       _dragging: { state: true },
       _draftTop: { state: true },
       _draftBottom: { state: true },
@@ -67,7 +68,8 @@ class HaTdbuTrack extends LitElement {
   static get styles() {
     return css`
       :host {
-        display: inline-block;
+        display: block;
+        width: 100%;
         --control-slider-color: var(
           --state-cover-active-color,
           var(--primary-color)
@@ -78,27 +80,40 @@ class HaTdbuTrack extends LitElement {
         --control-slider-thickness: var(--feature-height, 42px);
         --handle-size: 4px;
         --handle-margin: calc(var(--control-slider-thickness) / 8);
-        --tdbu-height: calc(var(--ha-space-20) + var(--ha-space-4));
+        --tdbu-length: 100%;
       }
 
-      :host([size="large"]) {
+      :host([orientation="vertical"]) {
+        width: var(--control-slider-thickness);
+        --tdbu-length: calc(var(--ha-space-20) + var(--ha-space-4));
+      }
+
+      :host([orientation="vertical"][size="large"]) {
         --control-slider-border-radius: var(--ha-border-radius-6xl);
         --control-slider-thickness: 130px;
-        --tdbu-height: 45vh;
-        --tdbu-max-height: 320px;
-        --tdbu-min-height: 200px;
+        --tdbu-length: 45vh;
+        --tdbu-max-length: 320px;
+        --tdbu-min-length: 200px;
       }
 
       .track {
         position: relative;
-        width: var(--control-slider-thickness);
-        height: var(--tdbu-height);
-        max-height: var(--tdbu-max-height, none);
-        min-height: var(--tdbu-min-height, 0);
         border-radius: var(--control-slider-border-radius);
         overflow: hidden;
         touch-action: none;
         cursor: pointer;
+      }
+
+      .track.horizontal {
+        width: 100%;
+        height: var(--control-slider-thickness);
+      }
+
+      .track.vertical {
+        width: var(--control-slider-thickness);
+        height: var(--tdbu-length);
+        max-height: var(--tdbu-max-length, none);
+        min-height: var(--tdbu-min-length, 0);
       }
 
       .track.disabled {
@@ -124,10 +139,6 @@ class HaTdbuTrack extends LitElement {
 
       .handle {
         position: absolute;
-        left: 50%;
-        width: 50%;
-        height: calc(var(--handle-size) + var(--ha-space-2));
-        transform: translate(-50%, -50%);
         cursor: grab;
         display: flex;
         align-items: center;
@@ -135,11 +146,34 @@ class HaTdbuTrack extends LitElement {
         touch-action: none;
       }
 
-      .handle::after {
+      .track.vertical .handle {
+        left: 50%;
+        width: 50%;
+        height: calc(var(--handle-size) + var(--ha-space-2));
+        transform: translate(-50%, -50%);
+      }
+
+      .track.vertical .handle::after {
         content: "";
         display: block;
         width: 100%;
         height: var(--handle-size);
+        border-radius: var(--handle-size);
+        background: #fff;
+      }
+
+      .track.horizontal .handle {
+        top: 50%;
+        height: 50%;
+        width: calc(var(--handle-size) + var(--ha-space-2));
+        transform: translate(-50%, -50%);
+      }
+
+      .track.horizontal .handle::after {
+        content: "";
+        display: block;
+        width: var(--handle-size);
+        height: 100%;
         border-radius: var(--handle-size);
         background: #fff;
       }
@@ -161,6 +195,7 @@ class HaTdbuTrack extends LitElement {
     this.step = 1;
     this.minGap = 0;
     this.size = "compact";
+    this.orientation = "horizontal";
   }
 
   render() {
@@ -177,13 +212,23 @@ class HaTdbuTrack extends LitElement {
     const topCoord = safeTop;
     const bottomCoord = 100 - safeBottom;
 
+    const startCoord = Math.min(topCoord, bottomCoord);
+    const endCoord = Math.max(topCoord, bottomCoord);
+
     const topOffset = this._calcOffset(topCoord / 100);
     const bottomOffset = this._calcOffset(bottomCoord / 100);
+    const startOffset = this._calcOffset(startCoord / 100);
+    const endOffset = this._calcOffset(endCoord / 100);
 
     const edgeOffset = "calc(var(--handle-margin) + (var(--handle-size) / 2))";
-    const fabricStyle = `top: calc(${topOffset} - ${edgeOffset}); bottom: calc(100% - (${bottomOffset} + ${edgeOffset}));`;
+    const isHorizontal = this.orientation !== "vertical";
+    const fabricStyle = isHorizontal
+      ? `left: calc(${startOffset} - ${edgeOffset}); right: calc(100% - (${endOffset} + ${edgeOffset}));`
+      : `top: calc(${startOffset} - ${edgeOffset}); bottom: calc(100% - (${endOffset} + ${edgeOffset}));`;
 
-    const trackClass = `track${disabled ? " disabled" : ""}`;
+    const trackClass = `track ${isHorizontal ? "horizontal" : "vertical"}${
+      disabled ? " disabled" : ""
+    }`;
 
     return html`
       <div class=${trackClass} @pointerdown=${this._onTrackPointerDown} @click=${this._stopEvent}>
@@ -191,7 +236,7 @@ class HaTdbuTrack extends LitElement {
         <div class="fabric" style=${fabricStyle}></div>
         <div
           class="handle handle-top"
-          style=${`top: ${topOffset};`}
+          style=${isHorizontal ? `left: ${topOffset};` : `top: ${topOffset};`}
           role="slider"
           aria-label="Top rail"
           aria-valuemin="0"
@@ -204,7 +249,7 @@ class HaTdbuTrack extends LitElement {
         ></div>
         <div
           class="handle handle-bottom"
-          style=${`top: ${bottomOffset};`}
+          style=${isHorizontal ? `left: ${bottomOffset};` : `top: ${bottomOffset};`}
           role="slider"
           aria-label="Bottom rail"
           aria-valuemin="0"
@@ -222,6 +267,9 @@ class HaTdbuTrack extends LitElement {
   _getRenderPosition(which, topState, bottomState) {
     const topPos = getPosition(topState);
     const bottomPos = getPosition(bottomState);
+    const headerState = topState || bottomState;
+    const stateText = this._formatState(topState, bottomState);
+    const lastChanged = this._getLatestChanged(topState, bottomState);
 
     if (which === "top") {
       if (typeof this._draftTop === "number") return this._draftTop;
@@ -235,6 +283,13 @@ class HaTdbuTrack extends LitElement {
   _calcOffset(progress) {
     const clamped = clamp(progress, 0, 1);
     return `calc(var(--handle-margin) + (var(--handle-size) / 2) + ${clamped} * (100% - 2 * var(--handle-margin) - var(--handle-size)))`;
+  }
+
+  _getPointerPercent(ev, rect) {
+    if (this.orientation === "vertical") {
+      return clamp(((ev.clientY - rect.top) / rect.height) * 100, 0, 100);
+    }
+    return clamp(((ev.clientX - rect.left) / rect.width) * 100, 0, 100);
   }
 
   _isDisabled(topState, bottomState) {
@@ -293,7 +348,7 @@ class HaTdbuTrack extends LitElement {
     if (!(track instanceof HTMLElement)) return;
 
     const rect = track.getBoundingClientRect();
-    const pct = clamp(((ev.clientY - rect.top) / rect.height) * 100, 0, 100);
+    const pct = this._getPointerPercent(ev, rect);
 
     const topState = getEntityState(this.hass, this.topEntity);
     const bottomState = getEntityState(this.hass, this.bottomEntity);
@@ -330,7 +385,7 @@ class HaTdbuTrack extends LitElement {
   }
 
   _onPointerMove(which, ev, rect) {
-    const pct = clamp(((ev.clientY - rect.top) / rect.height) * 100, 0, 100);
+    const pct = this._getPointerPercent(ev, rect);
 
     const topState = getEntityState(this.hass, this.topEntity);
     const bottomState = getEntityState(this.hass, this.bottomEntity);
@@ -406,11 +461,26 @@ class HaTdbuWidget extends LitElement {
     return css`
       :host {
         display: block;
+        --tile-color: var(--state-inactive-color);
+      }
+
+      ha-card:has(ha-tile-container[focused]) {
+        --shadow-default: var(--ha-card-box-shadow, 0 0 0 0 transparent);
+        --shadow-focus: 0 0 0 1px var(--tile-color);
+        border-color: var(--tile-color);
+        box-shadow: var(--shadow-default), var(--shadow-focus);
       }
 
       ha-card {
-        padding: var(--ha-space-4);
+        height: 100%;
         cursor: pointer;
+        transition:
+          box-shadow 180ms ease-in-out,
+          border-color 180ms ease-in-out;
+      }
+
+      ha-card.active {
+        --tile-color: var(--state-icon-color);
       }
 
       ha-card.disabled {
@@ -418,61 +488,12 @@ class HaTdbuWidget extends LitElement {
         opacity: 0.6;
       }
 
-      .header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--ha-space-2);
-        margin-bottom: var(--ha-space-3);
-      }
-
-      .title {
-        display: flex;
-        align-items: center;
-        gap: var(--ha-space-2);
-        min-width: 0;
+      ha-tile-icon {
+        --tile-icon-color: var(--tile-color);
       }
 
       ha-state-icon {
-        --mdc-icon-size: 20px;
-      }
-
-      .name {
-        font-size: var(--ha-font-size-m);
-        font-weight: var(--ha-font-weight-medium);
-        color: var(--primary-text-color);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .state {
-        font-size: var(--ha-font-size-s);
-        color: var(--secondary-text-color);
-      }
-
-      .body {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: var(--ha-space-4);
-        align-items: center;
-      }
-
-      .rows {
-        display: grid;
-        gap: var(--ha-space-1);
-      }
-
-      .row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--ha-space-2);
-        font-size: var(--ha-font-size-s);
-      }
-
-      .row .label {
-        color: var(--secondary-text-color);
+        --mdc-icon-size: 24px;
       }
     `;
   }
@@ -495,7 +516,8 @@ class HaTdbuWidget extends LitElement {
       name: config.name,
       top_entity: config.top_entity,
       bottom_entity: config.bottom_entity,
-      show_positions: config.show_positions !== false,
+      show_positions: config.show_positions === true,
+      show_positions_dialog: config.show_positions_dialog !== false,
       tap_action: config.tap_action || "details",
       tap_entity: config.tap_entity,
       step: typeof config.step === "number" && config.step > 0 ? config.step : 1,
@@ -504,7 +526,16 @@ class HaTdbuWidget extends LitElement {
   }
 
   getCardSize() {
-    return 2;
+    return 1;
+  }
+
+  getGridOptions() {
+    return {
+      columns: 6,
+      rows: 1,
+      min_columns: 3,
+      min_rows: 1,
+    };
   }
 
   render() {
@@ -521,44 +552,43 @@ class HaTdbuWidget extends LitElement {
     const topPos = getPosition(topState);
     const bottomPos = getPosition(bottomState);
 
+    const stateText = this._formatState(topState, bottomState);
+    const positionsText = this._formatPositions(topPos, bottomPos);
+    const secondaryText = this.config.show_positions
+      ? [stateText, positionsText].filter(Boolean).join(" · ")
+      : stateText;
+
+    const disabled = this._isDisabled(topState, bottomState);
+    const active = this._isActive(topState, bottomState);
+    const cardClass = [active ? "active" : "", disabled ? "disabled" : ""].filter(Boolean).join(" ");
+
     return html`
-      <ha-card
-        class=${this._isDisabled(topState, bottomState) ? "disabled" : ""}
-        @click=${this._handleCardTap}
-      >
-        <div class="header">
-          <div class="title">
-            <ha-state-icon .hass=${this.hass} .stateObj=${topState || bottomState}></ha-state-icon>
-            <div class="name">${name}</div>
-          </div>
-          <div class="state">${this._formatState(topState, bottomState)}</div>
-        </div>
-        <div class="body">
-          ${this.config.show_positions
-            ? html`
-                <div class="rows">
-                  <div class="row">
-                    <span class="label">Top</span>
-                    <span class="value">${formatPct(topPos)}</span>
-                  </div>
-                  <div class="row">
-                    <span class="label">Bottom</span>
-                    <span class="value">${formatPct(bottomPos)}</span>
-                  </div>
-                </div>
-              `
-            : html``}
+      <ha-card class=${cardClass} @click=${this._handleCardTap}>
+        <ha-tile-container .interactive=${this.config.tap_action !== "none"}>
+          <ha-tile-icon slot="icon" .interactive=${false}>
+            <ha-state-icon
+              slot="icon"
+              .hass=${this.hass}
+              .stateObj=${topState || bottomState}
+            ></ha-state-icon>
+          </ha-tile-icon>
+          <ha-tile-info slot="info">
+            <span slot="primary">${name}</span>
+            ${secondaryText ? html`<span slot="secondary">${secondaryText}</span>` : html``}
+          </ha-tile-info>
           <ha-tdbu-track
+            slot="features"
             .hass=${this.hass}
             top-entity=${this.config.top_entity}
             bottom-entity=${this.config.bottom_entity}
             .step=${this.config.step}
             .minGap=${this.config.min_gap}
             size="compact"
+            orientation="horizontal"
             @pointerdown=${this._stopTap}
             @click=${this._stopTap}
           ></ha-tdbu-track>
-        </div>
+        </ha-tile-container>
       </ha-card>
     `;
   }
@@ -614,6 +644,24 @@ class HaTdbuWidget extends LitElement {
     return topState?.state || bottomState?.state || "";
   }
 
+  _formatPositions(topPos, bottomPos) {
+    if (typeof topPos !== "number" || typeof bottomPos !== "number") return "";
+    return `Top ${formatPct(topPos)} · Bottom ${formatPct(bottomPos)}`;
+  }
+
+  _isActive(topState, bottomState) {
+    if (this._isDisabled(topState, bottomState)) return false;
+    const topPos = getPosition(topState);
+    const bottomPos = getPosition(bottomState);
+    if (typeof topPos === "number" && typeof bottomPos === "number") {
+      return !(topPos === 0 && bottomPos === 0);
+    }
+    return (
+      (topState && topState.state && topState.state !== "closed") ||
+      (bottomState && bottomState.state && bottomState.state !== "closed")
+    );
+  }
+
   _isDisabled(topState, bottomState) {
     const topUnavailable = !topState || topState.state === "unavailable" || topState.state === "unknown";
     const bottomUnavailable =
@@ -648,7 +696,19 @@ class HaTdbuDialog extends LitElement {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: var(--ha-space-4);
+        gap: var(--ha-space-6);
+        width: 100%;
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+
+      .controls > *:not(:last-child) {
+        margin-bottom: var(--ha-space-6);
       }
 
       .positions {
@@ -700,21 +760,71 @@ class HaTdbuDialog extends LitElement {
           <span slot="title">${name}</span>
         </ha-dialog-header>
         <div class="content" dialogInitialFocus tabindex="-1">
-          <ha-tdbu-track
-            .hass=${this.hass}
-            top-entity=${this.config.top_entity}
-            bottom-entity=${this.config.bottom_entity}
-            .step=${this.config.step}
-            .minGap=${this.config.min_gap}
-            size="large"
-          ></ha-tdbu-track>
-          <div class="positions">
-            <span>Top: ${formatPct(topPos)}</span>
-            <span>Bottom: ${formatPct(bottomPos)}</span>
+          ${headerState
+            ? html`
+                <ha-more-info-state-header
+                  .hass=${this.hass}
+                  .stateObj=${headerState}
+                  .stateOverride=${stateText || undefined}
+                  .changedOverride=${lastChanged}
+                ></ha-more-info-state-header>
+              `
+            : html``}
+          <div class="controls">
+            <ha-tdbu-track
+              .hass=${this.hass}
+              top-entity=${this.config.top_entity}
+              bottom-entity=${this.config.bottom_entity}
+              .step=${this.config.step}
+              .minGap=${this.config.min_gap}
+              size="large"
+              orientation="vertical"
+            ></ha-tdbu-track>
+            ${this.config.show_positions_dialog
+              ? html`
+                  <div class="positions">
+                    <span>Top: ${formatPct(topPos)}</span>
+                    <span>Bottom: ${formatPct(bottomPos)}</span>
+                  </div>
+                `
+              : html``}
           </div>
         </div>
       </ha-dialog>
     `;
+  }
+
+  _formatState(topState, bottomState) {
+    if (this._isDisabled(topState, bottomState)) return "Unavailable";
+
+    const topPos = getPosition(topState);
+    const bottomPos = getPosition(bottomState);
+
+    if (typeof topPos === "number" && typeof bottomPos === "number") {
+      if (topPos === 0 && bottomPos === 0) return "Closed";
+      if (topPos === 100 && bottomPos === 100) return "Open";
+      return "Partial";
+    }
+
+    return topState?.state || bottomState?.state || "";
+  }
+
+  _isDisabled(topState, bottomState) {
+    const topUnavailable = !topState || topState.state === "unavailable" || topState.state === "unknown";
+    const bottomUnavailable =
+      !bottomState || bottomState.state === "unavailable" || bottomState.state === "unknown";
+    return topUnavailable || bottomUnavailable;
+  }
+
+  _getLatestChanged(topState, bottomState) {
+    const topChanged = topState?.last_changed ? new Date(topState.last_changed) : null;
+    const bottomChanged = bottomState?.last_changed ? new Date(bottomState.last_changed) : null;
+
+    if (topChanged && bottomChanged) {
+      return topChanged > bottomChanged ? topChanged : bottomChanged;
+    }
+
+    return topChanged || bottomChanged || undefined;
   }
 }
 
