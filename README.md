@@ -10,7 +10,7 @@ A custom Lovelace card that controls top-down bottom-up blinds using two cover e
 - Includes a visual UI editor in Lovelace (no YAML required).
 
 ## Preview
-| Standard cover | TDBU dual-rail |
+| Standard cover | Ours |
 | --- | --- |
 | ![Standard cover tile](docs/cover-dual.png) | ![TDBU dual-rail tile](docs/cover-tdbu.png) |
 
