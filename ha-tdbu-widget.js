@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.6";
+const CARD_VERSION = "0.4.7";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -560,7 +560,6 @@ class HaTdbuWidget extends LitElement {
       ha-tdbu-track {
         --feature-height: 42px;
         --feature-border-radius: var(--ha-border-radius-lg);
-        --feature-color: var(--state-cover-active-color, var(--state-icon-color));
       }
     `;
   }
@@ -634,6 +633,10 @@ class HaTdbuWidget extends LitElement {
     const tileColor = this._getTileColor(topState, bottomState, active, disabled);
     const cardClass = disabled ? "disabled" : "";
     const cardStyle = tileColor ? `--tile-color: ${tileColor};` : "";
+    const trackStyle =
+      "--control-slider-color: var(--state-cover-active-color, var(--state-icon-color));" +
+      " --control-slider-background: var(--state-cover-active-color, var(--state-icon-color));" +
+      " --control-slider-background-opacity: 0.2;";
 
     return html`
       <ha-card class=${cardClass} style=${cardStyle} @click=${this._handleCardTap}>
@@ -652,6 +655,7 @@ class HaTdbuWidget extends LitElement {
           </div>
           <div class="tile-features" @pointerdown=${(ev) => this._stopTap(ev)} @click=${(ev) => this._stopTap(ev)}>
             <ha-tdbu-track
+              style=${trackStyle}
               .hass=${this.hass}
               top-entity=${this.config.top_entity}
               bottom-entity=${this.config.bottom_entity}
@@ -888,6 +892,7 @@ class HaTdbuDialog extends LitElement {
           <div class="controls">
             <div class="main-control">
               <ha-tdbu-track
+                style=${trackStyle}
                 .hass=${this.hass}
                 top-entity=${this.config.top_entity}
                 bottom-entity=${this.config.bottom_entity}
