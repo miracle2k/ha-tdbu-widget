@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.1";
+const CARD_VERSION = "0.4.2";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -481,12 +481,88 @@ class HaTdbuWidget extends LitElement {
         opacity: 0.6;
       }
 
-      ha-tile-icon {
-        --tile-icon-color: var(--tile-color);
+      .tile {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
 
-      ha-state-icon {
+      .tile-content {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px;
+        flex: 1;
+        min-width: 0;
+        box-sizing: border-box;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .tile-icon {
+        --tile-icon-color: var(--tile-color);
+        --tile-icon-opacity: 0.2;
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--ha-border-radius-pill);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+      }
+
+      .tile-icon::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-color: var(--tile-icon-color);
+        opacity: var(--tile-icon-opacity);
+        border-radius: inherit;
+      }
+
+      .tile-icon ha-state-icon {
         --mdc-icon-size: 24px;
+        color: var(--tile-icon-color);
+        z-index: 1;
+      }
+
+      .tile-info {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        min-width: 0;
+      }
+
+      .tile-info > * {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+      }
+
+      .tile-info .primary {
+        font-size: var(--ha-font-size-m);
+        font-weight: var(--ha-font-weight-medium);
+        line-height: var(--ha-line-height-normal);
+        letter-spacing: 0.1px;
+        color: var(--primary-text-color);
+      }
+
+      .tile-info .secondary {
+        font-size: var(--ha-font-size-s);
+        font-weight: var(--ha-font-weight-normal);
+        line-height: var(--ha-line-height-condensed);
+        letter-spacing: 0.4px;
+        color: var(--primary-text-color);
+      }
+
+      .tile-features {
+        padding: 0 var(--ha-space-3) var(--ha-space-3) var(--ha-space-3);
       }
 
       ha-tdbu-track {
@@ -568,43 +644,34 @@ class HaTdbuWidget extends LitElement {
     const cardStyle = tileColor ? `--tile-color: ${tileColor};` : "";
 
     return html`
-      <ha-card class=${cardClass} style=${cardStyle}>
-        <ha-tile-container
-          .interactive=${this.config.tap_action !== "none"}
-          .actionHandlerOptions=${{ hasHold: false, hasDoubleClick: false, hasTap: true }}
-          @action=${(ev) => this._handleAction(ev)}
-        >
-          <ha-tile-icon slot="icon" .interactive=${false}>
-            <ha-state-icon
-              slot="icon"
+      <ha-card class=${cardClass} style=${cardStyle} @click=${this._handleCardTap}>
+        <div class="tile">
+          <div class="tile-content">
+            <div class="tile-icon">
+              <ha-state-icon
+                .hass=${this.hass}
+                .stateObj=${topState || bottomState}
+              ></ha-state-icon>
+            </div>
+            <div class="tile-info">
+              <div class="primary">${name}</div>
+              ${secondaryText ? html`<div class="secondary">${secondaryText}</div>` : html``}
+            </div>
+          </div>
+          <div class="tile-features" @pointerdown=${(ev) => this._stopTap(ev)} @click=${(ev) => this._stopTap(ev)}>
+            <ha-tdbu-track
               .hass=${this.hass}
-              .stateObj=${topState || bottomState}
-            ></ha-state-icon>
-          </ha-tile-icon>
-          <ha-tile-info slot="info">
-            <span slot="primary" class="primary">${name}</span>
-            ${secondaryText ? html`<span slot="secondary" class="secondary">${secondaryText}</span>` : html``}
-          </ha-tile-info>
-          <ha-tdbu-track
-            slot="features"
-            .hass=${this.hass}
-            top-entity=${this.config.top_entity}
-            bottom-entity=${this.config.bottom_entity}
-            .step=${this.config.step}
-            .minGap=${this.config.min_gap}
-            size="compact"
-            orientation="horizontal"
-            @pointerdown=${(ev) => this._stopTap(ev)}
-            @click=${(ev) => this._stopTap(ev)}
-          ></ha-tdbu-track>
-        </ha-tile-container>
+              top-entity=${this.config.top_entity}
+              bottom-entity=${this.config.bottom_entity}
+              .step=${this.config.step}
+              .minGap=${this.config.min_gap}
+              size="compact"
+              orientation="horizontal"
+            ></ha-tdbu-track>
+          </div>
+        </div>
       </ha-card>
     `;
-  }
-
-  _handleAction(ev) {
-    if (ev?.detail?.action !== "tap") return;
-    this._handleCardTap();
   }
 
   _stopTap(ev) {
