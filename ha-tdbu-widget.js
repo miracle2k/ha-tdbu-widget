@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.2";
+const CARD_VERSION = "0.4.3";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -502,8 +502,6 @@ class HaTdbuWidget extends LitElement {
       }
 
       .tile-icon {
-        --tile-icon-color: var(--tile-color);
-        --tile-icon-opacity: 0.2;
         position: relative;
         width: 36px;
         height: 36px;
@@ -512,21 +510,12 @@ class HaTdbuWidget extends LitElement {
         align-items: center;
         justify-content: center;
         flex: none;
-      }
-
-      .tile-icon::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-color: var(--tile-icon-color);
-        opacity: var(--tile-icon-opacity);
-        border-radius: inherit;
+        color: var(--tile-color);
       }
 
       .tile-icon ha-state-icon {
         --mdc-icon-size: 24px;
-        color: var(--tile-icon-color);
-        z-index: 1;
+        color: currentColor;
       }
 
       .tile-info {
@@ -568,7 +557,7 @@ class HaTdbuWidget extends LitElement {
       ha-tdbu-track {
         --feature-height: 42px;
         --feature-border-radius: var(--ha-border-radius-lg);
-        --feature-color: var(--tile-color);
+        --feature-color: var(--state-cover-active-color, var(--state-icon-color));
       }
     `;
   }
@@ -605,15 +594,15 @@ class HaTdbuWidget extends LitElement {
   }
 
   getCardSize() {
-    return 1;
+    return 2;
   }
 
   getGridOptions() {
     return {
       columns: 6,
-      rows: 1,
+      rows: 2,
       min_columns: 3,
-      min_rows: 1,
+      min_rows: 2,
     };
   }
 
