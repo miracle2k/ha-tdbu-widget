@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.8";
+const CARD_VERSION = "0.4.9";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -59,6 +59,8 @@ class HaTdbuTrack extends LitElement {
       minGap: { attribute: "min-gap" },
       size: { reflect: true },
       orientation: { reflect: true },
+      topSide: { attribute: "top-side" },
+      showIndicator: { attribute: "show-indicator", type: Boolean },
       _dragging: { state: true },
       _draftTop: { state: true },
       _draftBottom: { state: true },
@@ -192,6 +194,25 @@ class HaTdbuTrack extends LitElement {
         box-shadow: 0 0 0 2px var(--control-slider-color);
         border-radius: var(--ha-border-radius-lg);
       }
+
+      .indicator {
+        position: absolute;
+        top: 6px;
+        width: 18px;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--control-slider-color);
+        opacity: 0.9;
+        pointer-events: none;
+      }
+
+      .indicator.left {
+        left: 10px;
+      }
+
+      .indicator.right {
+        right: 10px;
+      }
     `;
   }
 
@@ -201,6 +222,8 @@ class HaTdbuTrack extends LitElement {
     this.minGap = 0;
     this.size = "compact";
     this.orientation = "horizontal";
+    this.topSide = "right";
+    this.showIndicator = false;
   }
 
   render() {
@@ -214,8 +237,8 @@ class HaTdbuTrack extends LitElement {
     const safeTop = typeof topPos === "number" ? clamp(topPos, 0, 100) : 0;
     const safeBottom = typeof bottomPos === "number" ? clamp(bottomPos, 0, 100) : 0;
 
-    const topCoord = safeTop;
-    const bottomCoord = 100 - safeBottom;
+    const topCoord = this._toCoordTop(safeTop);
+    const bottomCoord = this._toCoordBottom(safeBottom);
 
     const startCoord = Math.min(topCoord, bottomCoord);
     const endCoord = Math.max(topCoord, bottomCoord);
@@ -234,11 +257,14 @@ class HaTdbuTrack extends LitElement {
     const trackClass = `track ${isHorizontal ? "horizontal" : "vertical"}${
       disabled ? " disabled" : ""
     }`;
+    const showIndicator = isHorizontal && this.showIndicator;
+    const indicatorClass = this._isTopSideRight() ? "indicator right" : "indicator left";
 
     return html`
       <div class=${trackClass} @pointerdown=${this._onTrackPointerDown} @click=${this._stopEvent}>
         <div class="track-bg"></div>
         <div class="fabric" style=${fabricStyle}></div>
+        ${showIndicator ? html`<div class=${indicatorClass}></div>` : html``}
         <div
           class="handle handle-top"
           style=${isHorizontal ? `left: ${topOffset};` : `top: ${topOffset};`}
@@ -287,6 +313,26 @@ class HaTdbuTrack extends LitElement {
     return `calc(var(--handle-margin) + (var(--handle-size) / 2) + ${clamped} * (100% - 2 * var(--handle-margin) - var(--handle-size)))`;
   }
 
+  _isTopSideRight() {
+    return this.orientation !== "vertical" && this.topSide === "right";
+  }
+
+  _toCoordTop(topPos) {
+    return this._isTopSideRight() ? 100 - topPos : topPos;
+  }
+
+  _toCoordBottom(bottomPos) {
+    return this._isTopSideRight() ? bottomPos : 100 - bottomPos;
+  }
+
+  _fromCoordTop(coord) {
+    return this._isTopSideRight() ? 100 - coord : coord;
+  }
+
+  _fromCoordBottom(coord) {
+    return this._isTopSideRight() ? coord : 100 - coord;
+  }
+
   _getPointerPercent(ev, rect) {
     if (this.orientation === "vertical") {
       return clamp(((ev.clientY - rect.top) / rect.height) * 100, 0, 100);
@@ -327,12 +373,14 @@ class HaTdbuTrack extends LitElement {
     const gap = this._getGap();
 
     if (which === "top") {
-      const next = clamp(topPos + delta, 0, 100 - bottomPos - gap);
+      const appliedDelta = this._isTopSideRight() ? -delta : delta;
+      const next = clamp(topPos + appliedDelta, 0, 100 - bottomPos - gap);
       this._setCoverPosition(this.topEntity, next);
       return;
     }
 
-    const next = clamp(bottomPos - delta, 0, 100 - topPos - gap);
+    const appliedDelta = this._isTopSideRight() ? delta : -delta;
+    const next = clamp(bottomPos + appliedDelta, 0, 100 - topPos - gap);
     this._setCoverPosition(this.bottomEntity, next);
   }
 
@@ -355,8 +403,8 @@ class HaTdbuTrack extends LitElement {
     const bottomState = getEntityState(this.hass, this.bottomEntity);
     const { topPos, bottomPos } = this._getCurrentPositions(topState, bottomState);
 
-    const topCoord = clamp(topPos, 0, 100);
-    const bottomCoord = clamp(100 - bottomPos, 0, 100);
+    const topCoord = clamp(this._toCoordTop(topPos), 0, 100);
+    const bottomCoord = clamp(this._toCoordBottom(bottomPos), 0, 100);
 
     const distTop = Math.abs(pct - topCoord);
     const distBottom = Math.abs(pct - bottomCoord);
@@ -394,12 +442,14 @@ class HaTdbuTrack extends LitElement {
     const gap = this._getGap();
 
     if (which === "top") {
-      const nextTop = clamp(pct, 0, 100 - bottomPos - gap);
+      const proposedTop = this._fromCoordTop(pct);
+      const nextTop = clamp(proposedTop, 0, 100 - bottomPos - gap);
       this._draftTop = nextTop;
       return;
     }
 
-    const nextBottom = clamp(100 - pct, 0, 100 - topPos - gap);
+    const proposedBottom = this._fromCoordBottom(pct);
+    const nextBottom = clamp(proposedBottom, 0, 100 - topPos - gap);
     this._draftBottom = nextBottom;
   }
 
@@ -572,6 +622,7 @@ class HaTdbuWidget extends LitElement {
       top_entity: "cover.top_rail",
       bottom_entity: "cover.bottom_rail",
       name: "TDBU blind",
+      top_side: "right",
     };
   }
 
@@ -589,7 +640,9 @@ class HaTdbuWidget extends LitElement {
       top_entity: config.top_entity,
       bottom_entity: config.bottom_entity,
       show_positions: config.show_positions === true,
+      show_indicator: config.show_indicator === true,
       show_positions_dialog: config.show_positions_dialog !== false,
+      top_side: config.top_side === "left" ? "left" : "right",
       tap_action: config.tap_action || "details",
       tap_entity: config.tap_entity,
       step: typeof config.step === "number" && config.step > 0 ? config.step : 1,
@@ -661,6 +714,8 @@ class HaTdbuWidget extends LitElement {
               .hass=${this.hass}
               top-entity=${this.config.top_entity}
               bottom-entity=${this.config.bottom_entity}
+              top-side=${this.config.top_side}
+              .showIndicator=${this.config.show_indicator}
               .step=${this.config.step}
               .minGap=${this.config.min_gap}
               size="compact"
@@ -902,6 +957,8 @@ class HaTdbuDialog extends LitElement {
                 .hass=${this.hass}
                 top-entity=${this.config.top_entity}
                 bottom-entity=${this.config.bottom_entity}
+                top-side=${this.config.top_side}
+                .showIndicator=${false}
                 .step=${this.config.step}
                 .minGap=${this.config.min_gap}
                 size="large"
@@ -980,6 +1037,7 @@ class HaTdbuWidgetEditor extends LitElement {
     if (!this.hass || !this._config) return html``;
 
     const tapAction = this._config.tap_action || "details";
+    const topSide = this._config.top_side === "left" ? "left" : "right";
 
     return html`
       <div class="form">
@@ -1039,6 +1097,22 @@ class HaTdbuWidgetEditor extends LitElement {
             @change=${this._valueChanged}
           ></ha-switch>
         </ha-formfield>
+        <ha-formfield .label=${"Show top indicator on card"}>
+          <ha-switch
+            .checked=${Boolean(this._config.show_indicator)}
+            data-field="show_indicator"
+            @change=${this._valueChanged}
+          ></ha-switch>
+        </ha-formfield>
+        <ha-select
+          .label=${"Top side"}
+          .value=${topSide}
+          @selected=${this._valueChanged}
+          data-field="top_side"
+        >
+          <ha-list-item .value=${"right"}>Right</ha-list-item>
+          <ha-list-item .value=${"left"}>Left</ha-list-item>
+        </ha-select>
         <ha-select
           .label=${"Tap action"}
           .value=${tapAction}

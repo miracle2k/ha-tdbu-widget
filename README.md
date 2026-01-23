@@ -38,7 +38,9 @@ type: custom:ha-tdbu-widget
 top_entity: cover.living_room_blind_top
 bottom_entity: cover.living_room_blind_bottom
 name: Living Room Blind
+top_side: right
 show_positions: false
+show_indicator: false
 show_positions_dialog: true
 tap_action: details
 step: 1
@@ -49,7 +51,9 @@ min_gap: 0
 - `top_entity` (required): Entity ID for the top rail cover.
 - `bottom_entity` (required): Entity ID for the bottom rail cover.
 - `name` (optional): Card title override.
+- `top_side` (optional, default: `right`): Which side of the horizontal slider represents the top rail (`left` or `right`).
 - `show_positions` (optional, default: `false`): Show top/bottom percent values on the tile.
+- `show_indicator` (optional, default: `false`): Show a small visual indicator on the tile for which side is the top rail.
 - `show_positions_dialog` (optional, default: `true`): Show top/bottom percent values in the dialog.
 - `tap_action` (optional, default: `details`): `details` | `more-info` | `none`.
 - `tap_entity` (optional): Entity ID to open when `tap_action: more-info`.
