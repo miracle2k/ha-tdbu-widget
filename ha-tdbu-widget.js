@@ -1,6 +1,6 @@
 /* Home Assistant TDBU Widget - Dual cover control for top-down bottom-up blinds */
 
-const CARD_VERSION = "0.4.7";
+const CARD_VERSION = "0.4.8";
 const CARD_TAG = "ha-tdbu-widget";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -136,6 +136,8 @@ class HaTdbuTrack extends LitElement {
         position: absolute;
         left: 0;
         right: 0;
+        top: 0;
+        bottom: 0;
         background: var(--control-slider-color);
         border-radius: var(--control-slider-border-radius);
       }
@@ -860,6 +862,10 @@ class HaTdbuDialog extends LitElement {
     const headerState = topState || bottomState;
     const stateText = this._formatState(topState, bottomState);
     const lastChanged = this._getLatestChanged(topState, bottomState);
+    const trackStyle =
+      "--control-slider-color: var(--state-cover-active-color, var(--state-icon-color));" +
+      " --control-slider-background: var(--state-cover-active-color, var(--state-icon-color));" +
+      " --control-slider-background-opacity: 0.2;";
 
     const name =
       this.config.name ||
